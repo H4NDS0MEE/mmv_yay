@@ -22,19 +22,26 @@ local gunEspEnabled = false
 
 local heroEspEnabled = false
 
-local guiVisible = true
+local autoTakeEnabled = false -- Состояние автоматического подбора
 
 
 local espBind = Enum.KeyCode.E
 
 local hideBind = Enum.KeyCode.H
 
+local takeGunBind = Enum.KeyCode.T -- Клавиша для ручного подбора пушки по умолчанию
+
+
+local guiVisible = true
+
 local originalSheriff = nil
+
+
 -- ================= АВТО-СОЗДАНИЕ ИНТЕРФЕЙСА (GUI) =================
 
 local screenGui = Instance.new("ScreenGui")
 
-screenGui.Name = "MMV_ESP_v9_Final"
+screenGui.Name = "MMV_ESP_v10_Final"
 
 screenGui.ResetOnSpawn = false
 
@@ -43,9 +50,9 @@ screenGui.Parent = playerGui
 
 local mainFrame = Instance.new("Frame")
 
-mainFrame.Size = UDim2.new(0, 220, 0, 315)
+mainFrame.Size = UDim2.new(0, 220, 0, 440) -- Увеличили высоту под новые элементы
 
-mainFrame.Position = UDim2.new(0.5, -110, 0.5, -157)
+mainFrame.Position = UDim2.new(0.5, -110, 0.5, -220)
 
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 
@@ -67,7 +74,7 @@ local title = Instance.new("TextLabel")
 
 title.Size = UDim2.new(1, 0, 0, 30)
 
-title.Text = "MMV ESP v9"
+title.Text = "MMV ESP v10"
 
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 
@@ -78,9 +85,7 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 14
 
 title.Parent = mainFrame
-
-
--- --- Кнопки управления ---
+-- --- Старые кнопки переключения функций ---
 
 local toggleBtn = Instance.new("TextButton")
 
@@ -122,6 +127,8 @@ namesBtn.TextSize = 14
 namesBtn.Parent = mainFrame
 
 Instance.new("UICorner", namesBtn)
+
+
 local gunEspBtn = Instance.new("TextButton")
 
 gunEspBtn.Size = UDim2.new(0, 180, 0, 35)
@@ -164,13 +171,57 @@ heroEspBtn.Parent = mainFrame
 Instance.new("UICorner", heroEspBtn)
 
 
+-- --- НОВЫЕ ЭЛЕМЕНТЫ (Auto Take & Take Gun) ---
+
+local autoTakeBtn = Instance.new("TextButton")
+
+autoTakeBtn.Size = UDim2.new(0, 180, 0, 35)
+
+autoTakeBtn.Position = UDim2.new(0, 20, 0, 200) -- Переключатель автоматического подбора
+
+autoTakeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+
+autoTakeBtn.Text = "Auto Take Gun: ВЫКЛ"
+
+autoTakeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+autoTakeBtn.Font = Enum.Font.SourceSansBold
+
+autoTakeBtn.TextSize = 13
+
+autoTakeBtn.Parent = mainFrame
+
+Instance.new("UICorner", autoTakeBtn)
+
+
+local teleGunBtn = Instance.new("TextButton")
+
+teleGunBtn.Size = UDim2.new(0, 180, 0, 35)
+
+teleGunBtn.Position = UDim2.new(0, 20, 0, 240) -- Кнопка мгновенного ручного подбора
+
+teleGunBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+
+teleGunBtn.Text = "⚡ ЗАБРАТЬ ПИСТОЛЕТ ⚡"
+
+teleGunBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+teleGunBtn.Font = Enum.Font.SourceSansBold
+
+teleGunBtn.TextSize = 13
+
+teleGunBtn.Parent = mainFrame
+
+Instance.new("UICorner", teleGunBtn)
+
+
 -- --- Поля ввода клавиш ---
 
 local espBindInput = Instance.new("TextBox")
 
 espBindInput.Size = UDim2.new(0, 180, 0, 35)
 
-espBindInput.Position = UDim2.new(0, 20, 0, 205)
+espBindInput.Position = UDim2.new(0, 20, 0, 290)
 
 espBindInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
@@ -189,11 +240,34 @@ espBindInput.Parent = mainFrame
 Instance.new("UICorner", espBindInput)
 
 
+local takeGunBindInput = Instance.new("TextBox")
+
+takeGunBindInput.Size = UDim2.new(0, 180, 0, 35)
+
+takeGunBindInput.Position = UDim2.new(0, 20, 0, 335) -- Настройка бинда для подбора пушки
+
+takeGunBindInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+takeGunBindInput.Text = "Бинд Take Gun: T"
+
+takeGunBindInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+takeGunBindInput.Font = Enum.Font.SourceSans
+
+takeGunBindInput.TextSize = 14
+
+takeGunBindInput.ClearTextOnFocus = true
+
+takeGunBindInput.Parent = mainFrame
+
+Instance.new("UICorner", takeGunBindInput)
+
+
 local hideBindInput = Instance.new("TextBox")
 
 hideBindInput.Size = UDim2.new(0, 180, 0, 35)
 
-hideBindInput.Position = UDim2.new(0, 20, 0, 250)
+hideBindInput.Position = UDim2.new(0, 20, 0, 380)
 
 hideBindInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
@@ -210,10 +284,11 @@ hideBindInput.ClearTextOnFocus = true
 hideBindInput.Parent = mainFrame
 
 Instance.new("UICorner", hideBindInput)
--- ================= ФУНКЦИЯ ПЕРЕТАСКИВАНИЯ =================
+
+
+-- Скрипт перетаскивания (Drag & Drop)
 
 local dragging, dragInput, dragStart, startPos
-
 
 local function updateDrag(input)
 
@@ -234,12 +309,9 @@ mainFrame.InputBegan:Connect(function(input)
 
 		startPos = mainFrame.Position
 
-		
 		input.Changed:Connect(function()
 
-			if input.UserInputState == Enum.UserInputState.End then 
-				dragging = false 
-			end
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
 
 		end)
 
@@ -261,24 +333,15 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 
-	if input == dragInput and dragging then 
-
-		updateDrag(input) 
-
-	end
+	if input == dragInput and dragging then updateDrag(input) end
 
 end)
-
-
--- ================= ЛОГИКА ЭЛЕМЕНТОВ ESP И ИМЁН =================
-
 local function applyHighlight(object, color, isGun)
 
 	local name = isGun and "ClientGunHighlight" or "ClientRoleHighlight"
 
 	local highlight = object:FindFirstChild(name)
 
-	
 	if not highlight then
 
 		highlight = Instance.new("Highlight")
@@ -289,14 +352,11 @@ local function applyHighlight(object, color, isGun)
 
 	end
 
-	
 	highlight.FillColor = color
 
 	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
 
 	highlight.FillTransparency = 0.4
-
-	highlight.OutlineTransparency = 0
 
 	highlight.Adornee = object
 
@@ -311,24 +371,19 @@ local function removeHighlight(object, isGun)
 
 	local highlight = object:FindFirstChild(name)
 
-	
-	if highlight then 
-
-		highlight:Destroy() 
-
-	end
+	if highlight then highlight:Destroy() end
 
 end
+
+
 local function applyNameTag(character, player, color)
 
 	local head = character:FindFirstChild("Head")
 
 	if not head then return end
 
-	
 	local tag = head:FindFirstChild("ClientRoleTag")
 
-	
 	if not tag then
 
 		tag = Instance.new("BillboardGui")
@@ -341,10 +396,7 @@ local function applyNameTag(character, player, color)
 
 		tag.AlwaysOnTop = true
 
-		
 		local label = Instance.new("TextLabel")
-
-		label.Name = "TextLabel"
 
 		label.Size = UDim2.new(1, 0, 1, 0)
 
@@ -360,12 +412,10 @@ local function applyNameTag(character, player, color)
 
 		label.Parent = tag
 
-		
 		tag.Parent = head
 
 	end
 
-	
 	tag.TextLabel.Text = player.DisplayName or player.Name
 
 	tag.TextLabel.TextColor3 = color
@@ -377,37 +427,74 @@ local function removeNameTag(character)
 
 	local head = character:FindFirstChild("Head")
 
-	
 	if head then
 
 		local tag = head:FindFirstChild("ClientRoleTag")
 
-		if tag then 
-			tag:Destroy() 
-		end
+		if tag then tag:Destroy() end
 
 	end
 
 end
 
 
--- ================= ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ ОБНОВЛЕНИЙ =================
+-- Логика телепортации к пистолету (Take Gun)
+
+local function collectGun()
+
+	local droppedGun = Workspace:FindFirstChild("GunDrop")
+
+	if droppedGun and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
+		-- Перемещаем персонажа точно на координаты лежащего пистолета
+
+		localPlayer.Character.HumanoidRootPart.CFrame = droppedGun.CFrame
+
+	end
+
+end
+
+
+-- Главный игровой цикл
 
 RunService.Heartbeat:Connect(function()
 
 	local droppedGun = Workspace:FindFirstChild("GunDrop")
 
 	
-	if droppedGun and gunEspEnabled and espEnabled then
+	-- Проверка наличия пистолета на полу
 
-		applyHighlight(droppedGun, Color3.fromRGB(0, 255, 0), true)
+	if droppedGun then
 
-	elseif droppedGun then
+		if gunEspEnabled and espEnabled then
 
-		removeHighlight(droppedGun, true)
+			applyHighlight(droppedGun, Color3.fromRGB(0, 255, 0), true)
+
+		end
+
+		
+		-- Функция АВТОПОДБОРА (если включена, персонаж мгновенно летит к пушке)
+
+		if autoTakeEnabled then
+
+			collectGun()
+
+		end
+
+	elseif droppedGun == nil then
+
+		-- Очистка старой подсветки, если пушку подняли
+
+		for _, obj in ipairs(Workspace:GetChildren()) do
+
+			if obj.Name == "GunDrop" then removeHighlight(obj, true) end
+
+		end
 
 	end
 
+
+	-- Проверка ролей игроков
 
 	for _, targetPlayer in ipairs(Players:GetPlayers()) do
 
@@ -417,15 +504,12 @@ RunService.Heartbeat:Connect(function()
 
 			local backpack = targetPlayer:FindFirstChild("Backpack")
 
-			
 			local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
 
 			local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
 
-			
 			local roleColor = Color3.fromRGB(0, 255, 0)
 
-			
 			if hasKnife then
 
 				roleColor = Color3.fromRGB(255, 0, 0)
@@ -440,72 +524,39 @@ RunService.Heartbeat:Connect(function()
 
 				else
 
-					if heroEspEnabled then
-
-						roleColor = Color3.fromRGB(255, 255, 0)
-
-					else
-
-						roleColor = Color3.fromRGB(0, 255, 0)
-
-					end
+					if heroEspEnabled then roleColor = Color3.fromRGB(255, 255, 0) else roleColor = Color3.fromRGB(0, 255, 0) end
 
 				end
 
 			end
 
-			
-			if espEnabled then
+			if espEnabled then applyHighlight(char, roleColor, false) else removeHighlight(char, false) end
 
-				applyHighlight(char, roleColor, false)
-
-			else
-
-				removeHighlight(char, false)
-
-			end
-
-			
-			if namesEnabled then
-
-				applyNameTag(char, targetPlayer, roleColor)
-
-			else
-
-				removeNameTag(char)
-
-			end
+			if namesEnabled then applyNameTag(char, targetPlayer, roleColor) else removeNameTag(char) end
 
 		end
 
 	end
 
 end)
+
+
+-- Сброс памяти о шерифе между раундами
+
 task.spawn(function()
 
 	while true do
 
 		local gunFound = false
 
-		
 		for _, p in ipairs(Players:GetPlayers()) do
 
-			if p.Character and (p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun")) then
-
-				gunFound = true
-
-			end
+			if p.Character and (p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun")) then gunFound = true end
 
 		end
 
-		
-		if not gunFound then
+		if not gunFound then originalSheriff = nil end
 
-			originalSheriff = nil
-
-		end
-
-		
 		task.wait(5)
 
 	end
@@ -513,41 +564,21 @@ task.spawn(function()
 end)
 
 
--- ================= ОБРАБОТКА ИНТЕРФЕЙСА ПО КЛИКАМ И КЛАВИШАМ =================
+-- Функции обновления визуального состояния кнопок
 
 local function updateESPState()
 
-	if espEnabled then
+	toggleBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
 
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+	toggleBtn.Text = espEnabled and "ESP силуэты: ВКЛ" or "ESP силуэты: ВЫКЛ"
 
-		toggleBtn.Text = "ESP силуэты: ВКЛ"
+	if not espEnabled then
 
-	else
+		for _, p in ipairs(Players:GetPlayers()) do if p.Character then removeHighlight(p.Character, false) end end
 
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-
-		toggleBtn.Text = "ESP силуэты: ВЫКЛ"
-
-		
-		for _, p in ipairs(Players:GetPlayers()) do
-
-			if p.Character then 
-
-				removeHighlight(p.Character, false) 
-
-			end
-
-		end
-
-		
 		local droppedGun = Workspace:FindFirstChild("GunDrop")
 
-		if droppedGun then 
-
-			removeHighlight(droppedGun, true) 
-
-		end
+		if droppedGun then removeHighlight(droppedGun, true) end
 
 	end
 
@@ -556,28 +587,13 @@ end
 
 local function updateNamesState()
 
-	if namesEnabled then
+	namesBtn.BackgroundColor3 = namesEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
 
-		namesBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+	namesBtn.Text = namesEnabled and "Имена над головой: ВКЛ" or "Имена над головой: ВЫКЛ"
 
-		namesBtn.Text = "Имена над головой: ВКЛ"
+	if not namesEnabled then
 
-	else
-
-		namesBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-
-		namesBtn.Text = "Имена над головой: ВЫКЛ"
-
-		
-		for _, p in ipairs(Players:GetPlayers()) do
-
-			if p.Character then 
-
-				removeNameTag(p.Character) 
-
-			end
-
-		end
+		for _, p in ipairs(Players:GetPlayers()) do if p.Character then removeNameTag(p.Character) end end
 
 	end
 
@@ -586,26 +602,15 @@ end
 
 local function updateGunEspState()
 
-	if gunEspEnabled then
+	gunEspBtn.BackgroundColor3 = gunEspEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
 
-		gunEspBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+	gunEspBtn.Text = gunEspEnabled and "Gun ESP (Пест на полу): ВКЛ" or "Gun ESP (Пест на полу): ВЫКЛ"
 
-		gunEspBtn.Text = "Gun ESP (Пест на полу): ВКЛ"
+	if not gunEspEnabled then
 
-	else
-
-		gunEspBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-
-		gunEspBtn.Text = "Gun ESP (Пест на полу): ВЫКЛ"
-
-		
 		local droppedGun = Workspace:FindFirstChild("GunDrop")
 
-		if droppedGun then 
-
-			removeHighlight(droppedGun, true) 
-
-		end
+		if droppedGun then removeHighlight(droppedGun, true) end
 
 	end
 
@@ -614,21 +619,22 @@ end
 
 local function updateHeroEspState()
 
-	if heroEspEnabled then
+	heroEspBtn.BackgroundColor3 = heroEspEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
 
-		heroEspBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-
-		heroEspBtn.Text = "Yellow Hero ESP: ВКЛ"
-
-	else
-
-		heroEspBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-
-		heroEspBtn.Text = "Yellow Hero ESP: ВЫКЛ"
-
-	end
+	heroEspBtn.Text = heroEspEnabled and "Yellow Hero ESP: ВКЛ" or "Yellow Hero ESP: ВЫКЛ"
 
 end
+
+
+local function updateAutoTakeState()
+
+	autoTakeBtn.BackgroundColor3 = autoTakeEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+
+	autoTakeBtn.Text = autoTakeEnabled and "Auto Take Gun: ВКЛ" or "Auto Take Gun: ВЫКЛ"
+
+end
+
+
 local function toggleGuiVisibility()
 
 	guiVisible = not guiVisible
@@ -638,59 +644,32 @@ local function toggleGuiVisibility()
 end
 
 
-toggleBtn.MouseButton1Click:Connect(function()
+-- Подключение кликов
 
-	espEnabled = not espEnabled
+toggleBtn.MouseButton1Click:Connect(function() espEnabled = not espEnabled updateESPState() end)
 
-	updateESPState()
+namesBtn.MouseButton1Click:Connect(function() namesEnabled = not namesEnabled updateNamesState() end)
 
-end)
+gunEspBtn.MouseButton1Click:Connect(function() gunEspEnabled = not gunEspEnabled updateGunEspState() end)
 
+heroEspBtn.MouseButton1Click:Connect(function() heroEspEnabled = not heroEspEnabled updateHeroEspState() end)
 
-namesBtn.MouseButton1Click:Connect(function()
+autoTakeBtn.MouseButton1Click:Connect(function() autoTakeEnabled = not autoTakeEnabled updateAutoTakeState() end)
 
-	namesEnabled = not namesEnabled
-
-	updateNamesState()
-
-end)
+teleGunBtn.MouseButton1Click:Connect(collectGun)
 
 
-gunEspBtn.MouseButton1Click:Connect(function()
-
-	gunEspEnabled = not gunEspEnabled
-
-	updateGunEspState()
-
-end)
-
-
-heroEspBtn.MouseButton1Click:Connect(function()
-
-	heroEspEnabled = not heroEspEnabled
-
-	updateHeroEspState()
-
-end)
-
+-- Парсинг клавиш
 
 local function tryParseKeyCode(text)
 
 	text = text:upper():gsub("%s+", "")
 
-	if tonumber(text) then 
-
-		text = "NUMPAD" .. text 
-
-	end
+	if tonumber(text) then text = "NUMPAD" .. text end
 
 	local success, keyCode = pcall(function() return Enum.KeyCode[text] end)
 
-	if success and keyCode and not string.find(keyCode.Name, "MouseButton") then
-
-		return keyCode
-
-	end
+	if success and keyCode and not string.find(keyCode.Name, "MouseButton") then return keyCode end
 
 	return nil
 
@@ -701,21 +680,20 @@ espBindInput.FocusLost:Connect(function()
 
 	local parsedKey = tryParseKeyCode(espBindInput.Text)
 
-	if parsedKey then
+	if parsedKey then espBind = parsedKey espBindInput.Text = "Бинд ESP: " .. parsedKey.Name
 
-		espBind = parsedKey
+	else espBindInput.Text = "Бинд ESP: " .. espBind.Name end
 
-		espBindInput.Text = "Бинд ESP: " .. parsedKey.Name
+end)
 
-	else
 
-		espBindInput.Text = "Неверная клавиша!"
+takeGunBindInput.FocusLost:Connect(function()
 
-		task.wait(1)
+	local parsedKey = tryParseKeyCode(takeGunBindInput.Text)
 
-		espBindInput.Text = "Бинд ESP: " .. espBind.Name
+	if parsedKey then takeGunBind = parsedKey takeGunBindInput.Text = "Бинд Take Gun: " .. parsedKey.Name
 
-	end
+	else takeGunBindInput.Text = "Бинд Take Gun: " .. takeGunBind.Name end
 
 end)
 
@@ -724,39 +702,28 @@ hideBindInput.FocusLost:Connect(function()
 
 	local parsedKey = tryParseKeyCode(hideBindInput.Text)
 
-	if parsedKey then
+	if parsedKey then hideBind = parsedKey hideBindInput.Text = "Бинд GUI: " .. parsedKey.Name
 
-		hideBind = parsedKey
-
-		hideBindInput.Text = "Бинд GUI: " .. parsedKey.Name
-
-	else
-
-		hideBindInput.Text = "Неверная клавиша!"
-
-		task.wait(1)
-
-		hideBindInput.Text = "Бинд GUI: " .. hideBind.Name
-
-	end
+	else hideBindInput.Text = "Бинд GUI: " .. hideBind.Name end
 
 end)
 
 
+-- Обработка физических нажатий кнопок на клавиатуре
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
-	if gameProcessed then 
+	if gameProcessed then return end
 
-		return 
-
-	end
-
-	
 	if input.KeyCode == espBind then
 
 		espEnabled = not espEnabled
 
 		updateESPState()
+
+	elseif input.KeyCode == takeGunBind then
+
+		collectGun()
 
 	elseif input.KeyCode == hideBind then
 
